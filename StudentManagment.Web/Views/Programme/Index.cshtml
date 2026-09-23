@@ -1,0 +1,575 @@
+﻿@model List<StudentManagment.Web.Models.Programme>
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+@{
+    ViewData["Title"] = "Programme Master";
+
+    var departments = ViewBag.Departments
+        as List<StudentManagment.Web.Models.Department>
+        ?? new List<StudentManagment.Web.Models.Department>();
+}
+
+<div class="container-fluid mt-4">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h3 class="mb-1">Programme Master</h3>
+            <p class="text-muted mb-0">
+                Manage programmes under each department
+            </p>
+        </div>
+
+        <button type="button"
+                class="btn btn-primary"
+                onclick="openAddModal()">
+            <i class="bi bi-plus-circle"></i>
+            Add Programme
+        </button>
+    </div>
+
+
+    <!-- Messages -->
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            @TempData["Success"]
+            <button type="button"
+                    class="btn-close"
+                    data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show">
+            @TempData["Error"]
+            <button type="button"
+                    class="btn-close"
+                    data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+
+    <!-- Search / Filter -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+
+            <div class="row g-3">
+
+                <!-- Search -->
+                <div class="col-md-5">
+                    <label class="form-label">
+                        Search Programme
+                    </label>
+
+                    <input type="text"
+                           id="searchBox"
+                           class="form-control"
+                           placeholder="Search code or programme name..."
+                           onkeyup="filterProgrammes()" />
+                </div>
+
+                <!-- Department Filter -->
+                <div class="col-md-4">
+                    <label class="form-label">
+                        Department
+                    </label>
+
+                    <select id="departmentFilter"
+                            class="form-select"
+                            onchange="filterProgrammes()">
+
+                        <option value="">All Departments</option>
+
+                        @foreach (var department in departments)
+                        {
+                            <option value="@department.DepartmentId">
+                                @department.DepartmentCode -
+                                @department.DepartmentName
+                            </option>
+                        }
+
+                    </select>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- Programme Table -->
+    <div class="card shadow-sm">
+
+        <div class="card-header bg-white">
+            <strong>
+                Programme List
+            </strong>
+
+            <span class="badge bg-primary float-end">
+                @Model.Count
+            </span>
+        </div>
+
+        <div class="table-responsive">
+
+            <table class="table table-hover table-bordered mb-0"
+                   id="programmeTable">
+
+                <thead class="table-light">
+
+                    <tr>
+                        <th style="width:70px;">#</th>
+                        <th>Department</th>
+                        <th>Programme Code</th>
+                        <th>Programme Name</th>
+                        <th>Duration</th>
+                        <th style="width:160px;">Actions</th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    @if (Model.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="6"
+                                class="text-center text-muted py-4">
+                                No programmes found.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        int sno = 1;
+
+                        foreach (var item in Model)
+                        {
+                            var department = departments
+                                .FirstOrDefault(x =>
+                                    x.DepartmentId == item.DepartmentId);
+
+                            <tr data-department="@item.DepartmentId"
+                                data-search="@item.ProgrammeCode @item.ProgrammeName">
+
+                                <td>
+                                    @sno
+                                </td>
+
+                                <td>
+                                    @if (department != null)
+                                    {
+                                        <span class="badge bg-secondary">
+                                            @department.DepartmentCode
+                                        </span>
+
+                                        <span>
+                                            @department.DepartmentName
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-danger">
+                                            Department Not Found
+                                        </span>
+                                    }
+                                </td>
+
+                                <td>
+                                    <strong>
+                                        @item.ProgrammeCode
+                                    </strong>
+                                </td>
+
+                                <td>
+                                    @item.ProgrammeName
+                                </td>
+
+                                <td>
+                                    @item.Duration
+                                </td>
+
+                                <td>
+
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-primary"
+                                            onclick="openEditModal(
+                                        @item.ProgrammeId,
+                                        @item.DepartmentId,
+                                        '@Html.Raw(System.Web.HttpUtility.JavaScriptStringEncode(item.ProgrammeCode))',
+                                        '@Html.Raw(System.Web.HttpUtility.JavaScriptStringEncode(item.ProgrammeName))',
+                                        '@Html.Raw(System.Web.HttpUtility.JavaScriptStringEncode(item.Duration))'
+                                        )">
+                                        <i class="bi bi-pencil"></i>
+                                        Edit
+                                    </button>
+
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-danger"
+                                            onclick="deleteProgramme(@item.ProgrammeId)">
+                                        <i class="bi bi-trash"></i>
+                                        Delete
+                                    </button>
+
+                                </td>
+
+                            </tr>
+
+                            sno++;
+                        }
+                    }
+
+                </tbody>
+
+            </table>
+
+        </div>
+    </div>
+
+</div>
+
+
+<!-- ===================================================== -->
+<!-- ADD / EDIT PROGRAMME MODAL -->
+<!-- ===================================================== -->
+
+<div class="modal fade"
+     id="programmeModal"
+     tabindex="-1"
+     aria-hidden="true">
+
+    <div class="modal-dialog modal-lg">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title"
+                    id="programmeModalTitle">
+                    Add Programme
+                </h5>
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal">
+                </button>
+
+            </div>
+
+
+            <form id="programmeForm"
+                  method="post">
+
+                <div class="modal-body">
+
+                    <input type="hidden"
+                           id="ProgrammeId"
+                           name="ProgrammeId"
+                           value="0" />
+
+
+                    <div class="row g-3">
+
+                        <!-- Department -->
+                        <div class="col-md-6">
+
+                            <label class="form-label">
+                                Department
+                                <span class="text-danger">*</span>
+                            </label>
+
+                            <select class="form-select"
+                                    id="DepartmentId"
+                                    name="DepartmentId"
+                                    required>
+
+                                <option value="">
+                                    -- Select Department --
+                                </option>
+
+                                @foreach (var department in departments)
+                                {
+                                    <option value="@department.DepartmentId">
+                                        @department.DepartmentCode -
+                                        @department.DepartmentName
+                                    </option>
+                                }
+
+                            </select>
+
+                        </div>
+
+
+                        <!-- Programme Code -->
+                        <div class="col-md-6">
+
+                            <label class="form-label">
+                                Programme Code
+                                <span class="text-danger">*</span>
+                            </label>
+
+                            <input type="text"
+                                   class="form-control"
+                                   id="ProgrammeCode"
+                                   name="ProgrammeCode"
+                                   maxlength="20"
+                                   required />
+
+                        </div>
+
+
+                        <!-- Programme Name -->
+                        <div class="col-md-8">
+
+                            <label class="form-label">
+                                Programme Name
+                                <span class="text-danger">*</span>
+                            </label>
+
+                            <input type="text"
+                                   class="form-control"
+                                   id="ProgrammeName"
+                                   name="ProgrammeName"
+                                   maxlength="200"
+                                   required />
+
+                        </div>
+
+
+                        <!-- Duration -->
+                        <div class="col-md-4">
+
+                            <label class="form-label">
+                                Duration
+                                <span class="text-danger">*</span>
+                            </label>
+
+                            <select class="form-select"
+                                    id="Duration"
+                                    name="Duration"
+                                    required>
+
+                                <option value="">
+                                    -- Select --
+                                </option>
+
+                                <option value="2 Years">
+                                    2 Years
+                                </option>
+
+                                <option value="3 Years">
+                                    3 Years
+                                </option>
+
+                                <option value="4 Years">
+                                    4 Years
+                                </option>
+
+                                <option value="5 Years">
+                                    5 Years
+                                </option>
+
+                            </select>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="modal-footer">
+
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-bs-dismiss="modal">
+                        Cancel
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-primary"
+                            id="saveProgrammeButton">
+                        Save Programme
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ===================================================== -->
+<!-- DELETE FORM -->
+<!-- ===================================================== -->
+
+<form id="deleteForm"
+      method="post"
+      asp-controller="Programme"
+      asp-action="Delete">
+
+    <input type="hidden"
+           id="deleteId"
+           name="id" />
+
+</form>
+
+
+@section Scripts
+{
+    <script>
+
+        // ==========================================
+        // ADD PROGRAMME
+        // ==========================================
+
+        function openAddModal() {
+
+            document.getElementById("programmeModalTitle")
+                .innerText = "Add Programme";
+
+            document.getElementById("programmeForm")
+                .action = "/Programme/Create";
+
+            document.getElementById("ProgrammeId")
+                .value = "0";
+
+            document.getElementById("DepartmentId")
+                .value = "";
+
+            document.getElementById("ProgrammeCode")
+                .value = "";
+
+            document.getElementById("ProgrammeName")
+                .value = "";
+
+            document.getElementById("Duration")
+                .value = "";
+
+            document.getElementById("saveProgrammeButton")
+                .innerText = "Save Programme";
+
+            var modal = new bootstrap.Modal(
+                document.getElementById("programmeModal")
+            );
+
+            modal.show();
+        }
+
+
+        // ==========================================
+        // EDIT PROGRAMME
+        // ==========================================
+
+        function openEditModal(
+            id,
+            departmentId,
+            programmeCode,
+            programmeName,
+            duration) {
+
+            document.getElementById("programmeModalTitle")
+                .innerText = "Edit Programme";
+
+            document.getElementById("programmeForm")
+                .action = "/Programme/Update";
+
+            document.getElementById("ProgrammeId")
+                .value = id;
+
+            document.getElementById("DepartmentId")
+                .value = departmentId;
+
+            document.getElementById("ProgrammeCode")
+                .value = programmeCode;
+
+            document.getElementById("ProgrammeName")
+                .value = programmeName;
+
+            document.getElementById("Duration")
+                .value = duration;
+
+            document.getElementById("saveProgrammeButton")
+                .innerText = "Update Programme";
+
+            var modal = new bootstrap.Modal(
+                document.getElementById("programmeModal")
+            );
+
+            modal.show();
+        }
+
+
+        // ==========================================
+        // DELETE PROGRAMME
+        // ==========================================
+
+        function deleteProgramme(id) {
+
+            if (confirm(
+                "Are you sure you want to delete this programme?"
+            )) {
+
+                document.getElementById("deleteId")
+                    .value = id;
+
+                document.getElementById("deleteForm")
+                    .submit();
+            }
+        }
+
+
+        // ==========================================
+        // SEARCH + DEPARTMENT FILTER
+        // ==========================================
+
+        function filterProgrammes() {
+
+            var search =
+                document.getElementById("searchBox")
+                    .value
+                    .toLowerCase();
+
+            var department =
+                document.getElementById("departmentFilter")
+                    .value;
+
+            var rows =
+                document.querySelectorAll(
+                    "#programmeTable tbody tr"
+                );
+
+            rows.forEach(function (row) {
+
+                var rowDepartment =
+                    row.getAttribute("data-department");
+
+                var rowSearch =
+                    row.getAttribute("data-search")
+                        .toLowerCase();
+
+                var searchMatch =
+                    rowSearch.includes(search);
+
+                var departmentMatch =
+                    department === "" ||
+                    rowDepartment === department;
+
+                if (searchMatch && departmentMatch) {
+                    row.style.display = "";
+                }
+                else {
+                    row.style.display = "none";
+                }
+
+            });
+        }
+
+    </script>
+}
